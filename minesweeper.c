@@ -10,6 +10,15 @@
 #include <stdlib.h>
 #include <time.h>
 
+/* Cell states. A cell's value is also its index into chars[], so drawing is a
+ * lookup with no branching and uncovering is an addition, not a state machine.
+ * The ordering earns its keep: every "already dealt with" state sorts above
+ * every "still hidden" one, so a single >= test makes a cell inert.
+ *
+ *   0-8    hidden, adjacent mine count    20-29  flagged
+ *   9      hidden mine                    31     off the active board
+ *   10-19  uncovered (19 is a hit mine)
+ */
 #define MINE	9
 #define VISIBLE	10
 #define MARKED	20
@@ -32,18 +41,26 @@
 
 typedef unsigned char uint8;
 
+/* Indexed by cell value; see the state table above. Slot 30 (?) is spare. */
 char *chars = ".......... 12345678*XXXXXXXXXX?%";
 
 uint8 board[256];
+/* The flood fill's queue, so probe() need not recurse. */
 uint8 stack[256], *stack_p = stack;
 
 uint8 width, height, mines;
 
 /* Safe cells left to uncover, not every unaccounted cell, so it tops out at
- * 256 - mines and stays inside a uint8 even on a full board.
+ * 256 mines and stays inside a uint8 even on a full board.
  */
 uint8 score;
 
+/* The three box() callbacks below each take a cell's index and value and
+ * return its new value; only cell_probe has any use for the index.
+ *
+ * cell_inc raises an adjacent count when seeding a mine. Other mines, and
+ * INVALID filler, are already at or above MINE and fall out untouched.
+ */
 uint8 cell_inc(uint8 i, uint8 c)
 {
 	if (c < MINE) {
@@ -53,6 +70,11 @@ uint8 cell_inc(uint8 i, uint8 c)
 	return c;
 }
 
+/* Uncover a cell, and queue it if it came up blank. Pushing exactly on the
+ * 0 -> VISIBLE transition is what lets the fill terminate without a visited
+ * set, since a cell can only make that transition once. A numbered cell is
+ * uncovered but not queued, which is what stops the fill at a number.
+ */
 uint8 cell_probe(uint8 i, uint8 c)
 {
 	if (c >= MINE) {
@@ -68,6 +90,9 @@ uint8 cell_probe(uint8 i, uint8 c)
 	return c;
 }
 
+/* Uncover for the end-of-game reveal. Display-only: unlike cell_probe it
+ * touches neither the score nor the stack, and display() discards the result.
+ */
 uint8 cell_reveal(uint8 i, uint8 c)
 {
 	if (c < VISIBLE) {
@@ -171,6 +196,10 @@ uint8 xytoi(uint8 x, uint8 y)
 	return (y << SHIFT) | x;
 }
 
+/* Uncover a cell, spreading while cells come up blank. Iterative: cell_probe
+ * pushes and this drains, so the fill's memory is the stack array rather than
+ * the call stack. Returns 1 if the cell was a mine.
+ */
 uint8 probe(uint8 i)
 {
 	*stack_p++ = i;
@@ -188,6 +217,11 @@ uint8 probe(uint8 i)
 	return 0;
 }
 
+/* Flag a hidden cell. Anything at or above VISIBLE is already uncovered,
+ * already flagged, or INVALID filler, and is left alone -- so a repeat flag
+ * cannot double-count. The loop normalises any hidden value into the flagged
+ * range, which for a mine (9) takes two additions rather than one.
+ */
 int mark(uint8 i)
 {
 	if (board[i] >= VISIBLE) {
@@ -201,6 +235,10 @@ int mark(uint8 i)
 	return 0;
 }
 
+/* Draw the active board with hex labels. fn filters each cell on its way out
+ * without writing back, so passing cell_reveal exposes the mines on a loss
+ * while leaving the board itself alone.
+ */
 void display(uint8 (*fn)(uint8, uint8))
 {
 	uint8 x, y, i, c;
