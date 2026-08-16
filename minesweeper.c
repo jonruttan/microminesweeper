@@ -183,8 +183,9 @@ void display(uint8 (*fn)(uint8, uint8))
 	for (y=0; y < height; y++, i++) {
 		printf("\n%hhx ", y);
 		for (x=0; x < width; x++) {
-			c = board[i++];
+			c = board[i];
 			printf("%c ", chars[fn ? fn(i, c) : c]);
+			i++;
 		}
 	}
 
