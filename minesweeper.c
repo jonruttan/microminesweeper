@@ -37,7 +37,12 @@ char *chars = ".......... 12345678*XXXXXXXXXX?%";
 uint8 board[256];
 uint8 stack[256], *stack_p = stack;
 
-uint8 width, height, mines, score;
+uint8 width, height, mines;
+
+/* Safe cells left to uncover, not every unaccounted cell, so it tops out at
+ * 256 - mines and stays inside a uint8 even on a full board.
+ */
+uint8 score;
 
 uint8 cell_inc(uint8 i, uint8 c)
 {
@@ -130,12 +135,22 @@ int init(uint8 w, uint8 h, uint8 m)
 		}
 	}
 
-	/* More mines than cells would spin the placement loop forever. */
-	if (m > score) {
+	/* score now holds the playable count modulo 256, so a zero here means the
+	 * full 16x16 -- which a uint8 mine count cannot oversubscribe anyway. Every
+	 * smaller board counted exactly, so clamp against it; more mines than cells
+	 * would spin the placement loop forever.
+	 */
+	if (score && m > score) {
 		m = score;
 	}
 
 	mines = m;
+
+	/* Safe cells. Both terms are modulo 256, but their difference is not, so
+	 * this lands on the true count without ever widening. Needs one mine on a
+	 * full board, which every level places.
+	 */
+	score -= m;
 
 	while (m) {
 		i = rand() & 0xff;
@@ -182,8 +197,6 @@ int mark(uint8 i)
 	while (board[i] < MARKED) {
 		board[i] += VISIBLE;
 	}
-
-	score--;
 
 	return 0;
 }
