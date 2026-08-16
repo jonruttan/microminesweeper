@@ -1,9 +1,9 @@
-/* Title:	Minimal C Minesweeper
+/* Title:		Minimal C Minesweeper
  * Description:	A version of the Minesweeper game for the terminal written in C.
  * Keywords:	[#c, #minesweeper]
- * Author:	"[Jon Ruttan](jonruttan@gmail.com)"
- * Date:	2025-06-07
- * Revision:	1 (2025-06-7)
+ * Author:		"[Jon Ruttan](jonruttan@gmail.com)"
+ * Date:		2025-06-07
+ * Revision:	1 (2025-06-07)
  */
 
 #include <stdio.h>
@@ -118,7 +118,16 @@ int init(uint8 w, uint8 h, uint8 m)
 	return 0;
 }
 
-int probe(uint8 i)
+uint8 xytoi(uint8 x, uint8 y)
+{
+	for (; y--; ) {
+		x += width + 1;
+	}
+
+	return ++x;
+}
+
+uint8 probe(uint8 i)
 {
 	*stack_p++ = i;
 
@@ -146,15 +155,6 @@ int mark(uint8 i)
 	return 0;
 }
 
-uint8 xytoi(uint8 x, uint8 y)
-{
-	for (; y--; ) {
-		x += width + 1;
-	}
-
-	return ++x;
-}
-
 void display(uint8 (*fn)(uint8, uint8))
 {
 	uint8 x, y, i = 1, c;
@@ -163,7 +163,6 @@ void display(uint8 (*fn)(uint8, uint8))
 	for (x=0; x < width; x++) {
 		printf("%hhx ", x);
 	}
-
 
 	for (y=0; y < height; y++, i++) {
 		printf("\n%hhx ", y);
@@ -212,4 +211,3 @@ int main(int argv, char *argc[], char *env[])
 	return 0;
 }
 #endif /* TESTS */
-
