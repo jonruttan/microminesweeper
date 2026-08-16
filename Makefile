@@ -39,6 +39,7 @@
 # - `submodule` -- check out the test-runner submodule
 # - `run` -- play, honours LEVEL
 # - `clean` -- remove build output
+# - `help` -- print the Usage and Targets sections above
 #
 
 CC       ?= cc
@@ -62,7 +63,7 @@ LEVEL ?= classic
 
 SAN := -fsanitize=address,undefined -fno-omit-frame-pointer
 
-.PHONY: all check test sanitize verify-runner submodule run clean
+.PHONY: all check test sanitize verify-runner submodule run clean help
 
 all: $(BIN)
 
@@ -104,3 +105,17 @@ run: $(BIN)
 clean:
 	rm -f $(BIN)
 	rm -rf $(BIN).dSYM
+
+# Print the Usage and Targets sections of the header above. That header is the
+# only copy -- nothing down here restates a target, so the two cannot drift.
+help:
+	@sed -n '/^# ## Usage/,/^$$/p' $(firstword $(MAKEFILE_LIST)) | awk '\
+	  { sub(/^# ?/, "") } \
+	  /^```/ { next } \
+	  { gsub(/`/, "") } \
+	  /^## /  { sub(/^## /, ""); printf "\n%s:\n", $$0; next } \
+	  /^### / { sub(/^### /, ""); printf "\n  %s\n", $$0; next } \
+	  /^- /   { sub(/^- /, ""); i = index($$0, " -- "); \
+	            printf "  %-15s %s\n", substr($$0, 1, i-1), substr($$0, i+4); next } \
+	  /^$$/   { next } \
+	  { printf "    %s\n", $$0 }'
