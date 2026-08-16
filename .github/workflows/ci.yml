@@ -36,3 +36,29 @@ jobs:
 
       - name: Test under ASan and UBSan
         run: make sanitize
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+
+    steps:
+      # `make docs` reads only minesweeper.c, README.md and docs/, so this job
+      # does not need the submodule.
+      - uses: actions/checkout@v4
+
+      - name: Install doxygen
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+          doxygen --version
+
+      # Doxyfile sets WARN_AS_ERROR, so an undocumented parameter or an
+      # unresolved reference fails here the same way a failing test would.
+      - name: Build reference
+        run: make docs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doxygen-html
+          path: build/doxygen/html
+          if-no-files-found: error
