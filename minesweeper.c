@@ -223,16 +223,67 @@ void display(uint8 (*fn)(uint8, uint8))
 }
 
 #ifndef TESTS
-int main(int argc, char *argv[], char *env[])
+#include <string.h>
+
+struct level {
+	char *name;
+	uint8 width, height, mines;
+};
+
+/* The classic expert board is 30x16, which needs more than the 16 columns a
+ * uint8 index affords, so expert is squared off at 16x16 with the same 99.
+ */
+static struct level levels[] = {
+	{ "classic",		10, 10, 10 },
+	{ "beginner",		 9,  9, 10 },
+	{ "intermediate",	16, 16, 40 },
+	{ "expert",			16, 16, 99 },
+	{ NULL,				 0,  0,  0 }
+};
+
+static struct level *find_level(char *name)
+{
+	struct level *l;
+
+	for (l = levels; l->name; l++) {
+		if (!strcmp(l->name, name)) {
+			return l;
+		}
+	}
+
+	return NULL;
+}
+
+static int usage(char *prog)
+{
+	struct level *l;
+
+	fprintf(stderr, "usage: %s [level]\n\nlevels:\n", prog);
+
+	for (l = levels; l->name; l++) {
+		fprintf(stderr, "  %-14s %hhux%hhu, %hhu mines%s\n",
+				l->name, l->width, l->height, l->mines,
+				l == levels ? " (default)" : "");
+	}
+
+	return 1;
+}
+
+int main(int argc, char *argv[])
 {
 	uint8 x, y, m, i;
 	int count, moves = 0;
+	struct level *l = levels;
+
+	if (argc > 1 && (l = find_level(argv[1])) == NULL) {
+		return usage(argv[0]);
+	}
 
 	srand(time(NULL));
-	init(10, 10, 10);
+	init(l->width, l->height, l->mines);
 
 	while (1) {
-		printf("Score: %i, Move: %i\n", score, moves);
+		printf("Score: %hhu, Mines: %hhu, Move: %i\n", score, mines, moves);
 		display(NULL);
 		count = scanf("%hhx %hhx %hhu", &x, &y, &m);
 
