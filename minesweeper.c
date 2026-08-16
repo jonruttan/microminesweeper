@@ -193,7 +193,7 @@ void display(uint8 (*fn)(uint8, uint8))
 }
 
 #ifndef TESTS
-int main(int argv, char *argc[], char *env[])
+int main(int argc, char *argv[], char *env[])
 {
 	uint8 x, y, m, i;
 	int count, moves = 0;
@@ -205,6 +205,20 @@ int main(int argv, char *argc[], char *env[])
 		printf("Score: %i, Move: %i\n", score, moves);
 		display(NULL);
 		count = scanf("%hhx %hhx %hhu", &x, &y, &m);
+
+		/* EOF, or input the format could not consume -- retrying would leave
+		 * the offending bytes in the buffer and spin.
+		 */
+		if (count != 3) {
+			printf("\n");
+			break;
+		}
+
+		if (x >= width || y >= height) {
+			printf("Off the board.\n");
+			continue;
+		}
+
 		i = xytoi(x, y);
 
 		if (m) {
