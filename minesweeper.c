@@ -86,7 +86,6 @@ int init(uint8 w, uint8 h, uint8 m)
 
 	width = w;
 	height = h;
-	mines = m;
 	score = 0;
 
 	stack_p = stack;
@@ -110,6 +109,13 @@ int init(uint8 w, uint8 h, uint8 m)
 			break;
 		}
 	}
+
+	/* More mines than cells would spin the placement loop forever. */
+	if (m > score) {
+		m = score;
+	}
+
+	mines = m;
 
 	while (m) {
 		i = rand() & 0xff;
