@@ -3,10 +3,10 @@
 
 static char *test_cell_inc(void)
 {
-   uint8 i = 0, c = MINE - 1;
+   uint8 i = 0;
 
-   _it_should("increment values less than MINE", MINE == cell_inc(i, c));
-   _it_should("not increment values greater than or equal to MINE", MINE == cell_inc(i, c));
+   _it_should("increment values less than MINE", MINE == cell_inc(i, MINE - 1));
+   _it_should("not increment values greater than or equal to MINE", MINE == cell_inc(i, MINE));
 
    return NULL;
 }
@@ -16,6 +16,7 @@ static char *test_cell_probe(void)
    uint8 i = 0;
 
    score = 255;
+   stack_p = stack;
 
    _it_should("not increment values greater than or equal to MINE", MINE == cell_probe(i, MINE));
    _it_should("increment values less than VISIBLE", VISIBLE == cell_probe(i, 0));
@@ -28,7 +29,7 @@ static char *test_cell_probe(void)
 
    _it_should("increment values less than VISIBLE", VISIBLE + 1 == cell_probe(i, 1));
    _it_should("not have incremented the stack pointer", stack + 1 == stack_p);
-   _it_should("not have decremented the score", 254 == score);
+   _it_should("have decremented the score", 253 == score);
 
    return NULL;
 }
@@ -38,18 +39,14 @@ static char *test_cell_reveal(void)
    uint8 i = 0;
 
    score = 255;
+   stack_p = stack;
 
    _it_should("increment values less than VISIBLE", VISIBLE == cell_reveal(i, 0));
-   _it_should("have incremented the stack pointer", stack + 1 == stack_p);
-   _it_should("have decremented the score", 254 == score);
-
-   _it_should("not increment values greater than or equal to VISIBLE", VISIBLE == cell_reveal(i, VISIBLE));
-   _it_should("not have incremented the stack pointer", stack + 1 == stack_p);
-   _it_should("not have decremented the score", 254 == score);
-
    _it_should("increment values less than VISIBLE", VISIBLE + 1 == cell_reveal(i, 1));
-   _it_should("not have incremented the stack pointer", stack + 1 == stack_p);
-   _it_should("not have decremented the score", 254 == score);
+   _it_should("not increment values greater than or equal to VISIBLE", VISIBLE == cell_reveal(i, VISIBLE));
+
+   _it_should("not have touched the score", 255 == score);
+   _it_should("not have touched the stack pointer", stack == stack_p);
 
    return NULL;
 }
