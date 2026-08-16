@@ -55,6 +55,5 @@ Mkfile.old
 dkms.conf
 
 # Binary
-c-skeleton
-c-skeleton-debug
+minesweeper
 
