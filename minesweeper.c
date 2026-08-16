@@ -15,6 +15,21 @@
 #define MARKED	20
 #define INVALID	31
 
+/* The board is a fixed 16x16 address space, indexed i = (y << SHIFT) | x.
+ *
+ * The stride is a constant power of two, so an index is a shift and an or --
+ * never a multiply -- and a uint8 addresses all 256 cells exactly once.
+ *
+ * Cells outside the active width x height hold INVALID, which is >= MARKED and
+ * so is inert to every cell_* operation. That dead region doubles as the
+ * sentinel border -- except at the full 16 columns, where none is left over;
+ * see box_row().
+ */
+#define SHIFT	4
+#define STRIDE	16
+#define MASK	0x0f
+#define ROW	0xf0
+
 typedef unsigned char uint8;
 
 char *chars = ".......... 12345678*XXXXXXXXXX?%";
@@ -57,24 +72,39 @@ uint8 cell_reveal(uint8 i, uint8 c)
 	return c;
 }
 
+/* Apply fn to the three cells at j, j+1, j+2, skipping any that fell out of
+ * the row. j is a uint8, so it wraps inside the board rather than running off
+ * it -- and a cell that wrapped past a row edge lands in a different row,
+ * which is exactly what the high nibble catches. That one test is the whole
+ * 16-wide edge case; at any narrower width the INVALID border absorbs it.
+ */
+static void box_row(uint8 j, uint8 row, uint8 (*fn)(uint8, uint8))
+{
+	uint8 k;
+
+	for (k = 0; k < 3; k++, j++) {
+		if ((j & ROW) == row) {
+			board[j] = fn(j, board[j]);
+		}
+	}
+}
+
+/* Apply fn to the 3x3 neighbourhood around a cell, the centre included.
+ * Columns are clipped by the row mask above; rows need these guards instead,
+ * because a row that ran off the top or bottom is still a valid row.
+ */
 int box(uint8 i, uint8 (*fn)(uint8, uint8))
 {
-	uint8 j, k, *p;
+	uint8 y = i >> SHIFT;
 
-	if (i > width) {
-		for (j=i-width, p=board+j, k=3; k--; j--, p--) {
-			*p = fn(j, *p);
-		}
+	if (y) {
+		box_row(i - STRIDE - 1, (i - STRIDE) & ROW, fn);
 	}
 
-	for (j=i-1, p=board+j, k=3; k--; j++, p++) {
-		*p = fn(j, *p);
-	}
+	box_row(i - 1, i & ROW, fn);
 
-	if (255 - i > width) {
-		for (j=i+width, p=board+j, k=3; k--; j++, p++) {
-			*p = fn(j, *p);
-		}
+	if (y < MASK) {
+		box_row(i + STRIDE - 1, (i + STRIDE) & ROW, fn);
 	}
 
 	return 0;
@@ -82,31 +112,21 @@ int box(uint8 i, uint8 (*fn)(uint8, uint8))
 
 int init(uint8 w, uint8 h, uint8 m)
 {
-	uint8 i, j, k, n;
+	uint8 x, y, i;
 
 	width = w;
 	height = h;
 	score = 0;
-
 	stack_p = stack;
 
-	for (i=255, j= 0, k=0; ; i--) {
-		if (j-- && k <= height) {
-			n = 0;
-			score++;
-		} else {
-			n = INVALID;
-		}
-
-		board[255 - i] = n;
-
-		if (j > width) {
-			j = width;
-			k++;
-		}
-
-		if (!i) {
-			break;
+	for (y = 0, i = 0; y <= MASK; y++) {
+		for (x = 0; x <= MASK; x++, i++) {
+			if (x < width && y < height) {
+				board[i] = 0;
+				score++;
+			} else {
+				board[i] = INVALID;
+			}
 		}
 	}
 
@@ -130,13 +150,10 @@ int init(uint8 w, uint8 h, uint8 m)
 	return 0;
 }
 
+/* A shift and an or, never a multiply -- the whole reason the stride is 16. */
 uint8 xytoi(uint8 x, uint8 y)
 {
-	for (; y--; ) {
-		x += width + 1;
-	}
-
-	return ++x;
+	return (y << SHIFT) | x;
 }
 
 uint8 probe(uint8 i)
@@ -173,19 +190,19 @@ int mark(uint8 i)
 
 void display(uint8 (*fn)(uint8, uint8))
 {
-	uint8 x, y, i = 1, c;
+	uint8 x, y, i, c;
 
 	printf("  ");
 	for (x=0; x < width; x++) {
 		printf("%hhx ", x);
 	}
 
-	for (y=0; y < height; y++, i++) {
+	for (y=0; y < height; y++) {
 		printf("\n%hhx ", y);
 		for (x=0; x < width; x++) {
+			i = (y << SHIFT) | x;
 			c = board[i];
 			printf("%c ", chars[fn ? fn(i, c) : c]);
-			i++;
 		}
 	}
 

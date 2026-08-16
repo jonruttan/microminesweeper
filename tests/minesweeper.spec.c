@@ -62,23 +62,44 @@ uint8 test_fn(uint8 i, uint8 c)
 
 static char *test_box(void)
 {
-   width = 9;
-
-    _it_should("return zero", 0 == box(1, test_fn));
-   _it_should("have called test_fn 6 times", 6 == test_fn_calls);
-   _it_should("have called test_fn with proper indicies", 0 == memcmp((uint8[]){ 0, 1, 2, 10, 11, 12 }, test_fn_indicies, test_fn_calls));
-
    test_fn_calls = 0;
 
-   _it_should("return zero", 0 == box(11, test_fn));
+   _it_should("return zero", 0 == box(17, test_fn));
    _it_should("have called test_fn 9 times", 9 == test_fn_calls);
-   _it_should("have called test_fn with proper indicies", 0 == memcmp((uint8[]){ 2, 1, 0, 10, 11, 12, 20, 21, 22 }, test_fn_indicies, test_fn_calls));
+   _it_should("have visited the full 3x3 box", 0 == memcmp((uint8[]){ 0, 1, 2, 16, 17, 18, 32, 33, 34 }, test_fn_indicies, test_fn_calls));
 
    test_fn_calls = 0;
 
-   _it_should("return zero", 0 == box(254, test_fn));
+   _it_should("return zero", 0 == box(1, test_fn));
    _it_should("have called test_fn 6 times", 6 == test_fn_calls);
-   _it_should("have called test_fn with proper indicies", 0 == memcmp((uint8[]){ 245, 244, 243, 253, 254, 255 }, test_fn_indicies, test_fn_calls));
+   _it_should("have clipped the row above", 0 == memcmp((uint8[]){ 0, 1, 2, 16, 17, 18 }, test_fn_indicies, test_fn_calls));
+
+   test_fn_calls = 0;
+
+   _it_should("return zero", 0 == box(0, test_fn));
+   _it_should("have called test_fn 4 times", 4 == test_fn_calls);
+   _it_should("have clipped the top left corner", 0 == memcmp((uint8[]){ 0, 1, 16, 17 }, test_fn_indicies, test_fn_calls));
+
+   /* Index 15 is (f, 0) and index 16 is (0, 1): adjacent in memory, but not
+    * on the board, and at 16 columns there is no border cell between them.
+    */
+   test_fn_calls = 0;
+
+   _it_should("return zero", 0 == box(15, test_fn));
+   _it_should("have called test_fn 4 times", 4 == test_fn_calls);
+   _it_should("not have wrapped past the right edge", 0 == memcmp((uint8[]){ 14, 15, 30, 31 }, test_fn_indicies, test_fn_calls));
+
+   test_fn_calls = 0;
+
+   _it_should("return zero", 0 == box(240, test_fn));
+   _it_should("have called test_fn 4 times", 4 == test_fn_calls);
+   _it_should("have clipped the bottom left corner", 0 == memcmp((uint8[]){ 224, 225, 240, 241 }, test_fn_indicies, test_fn_calls));
+
+   test_fn_calls = 0;
+
+   _it_should("return zero", 0 == box(255, test_fn));
+   _it_should("have called test_fn 4 times", 4 == test_fn_calls);
+   _it_should("have clipped the bottom right corner", 0 == memcmp((uint8[]){ 238, 239, 254, 255 }, test_fn_indicies, test_fn_calls));
 
    return NULL;
 }
@@ -130,10 +151,11 @@ static char *test_mark(void)
 
 static char *test_xytoi(void)
 {
-   width = 9;
-
-   _it_should("return 1 for (0, 0)", 1 == xytoi(0, 0));
-   _it_should("return 100 for (9, 9)", 100 == xytoi(9, 9));
+   _it_should("return 0 for (0, 0)", 0 == xytoi(0, 0));
+   _it_should("return 1 for (1, 0)", 1 == xytoi(1, 0));
+   _it_should("return 16 for (0, 1)", 16 == xytoi(0, 1));
+   _it_should("return 153 for (9, 9)", 153 == xytoi(9, 9));
+   _it_should("return 255 for (f, f)", 255 == xytoi(MASK, MASK));
 
    return NULL;
 }
