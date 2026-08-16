@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / ${{ matrix.cc }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        cc: [gcc, clang]
+
+    env:
+      CC: ${{ matrix.cc }}
+
+    steps:
+      # The suite lives in the test-runner submodule, so a shallow checkout
+      # without it would leave nothing to run.
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Fails if the submodule and the Makefile's RUNNER_VERSION disagree.
+      - name: Verify pinned test-runner
+        run: make verify-runner
+
+      - name: Build and test
+        run: make check
+
+      - name: Test under ASan and UBSan
+        run: make sanitize
