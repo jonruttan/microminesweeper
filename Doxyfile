@@ -1,0 +1,66 @@
+# Doxygen configuration for Micro Minesweeper.
+#
+# Build with `make docs`; output lands in build/doxygen/html.
+# Only settings that differ from the defaults are listed, so this stays
+# readable -- run `doxygen -x Doxyfile` to see it against the full default set.
+
+PROJECT_NAME           = "Micro Minesweeper"
+PROJECT_BRIEF          = "A terminal Minesweeper in C, without multiply or divide"
+PROJECT_NUMBER         = 2
+
+OUTPUT_DIRECTORY       = build/doxygen
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+HTML_DYNAMIC_SECTIONS  = YES
+
+# The prose docs are the reference's front matter; the README is its home page.
+INPUT                  = minesweeper.c README.md docs
+FILE_PATTERNS          = *.c *.h *.md
+USE_MDFILE_AS_MAINPAGE = README.md
+MARKDOWN_SUPPORT       = YES
+
+# Generate GitHub-style heading anchors, so a link like `design.md#scoring`
+# resolves both here and when the same file is read on GitHub.
+MARKDOWN_ID_STYLE      = GITHUB
+
+# A single-file C program: document everything, including file-static helpers
+# and the globals that carry the board state.
+OPTIMIZE_OUTPUT_FOR_C  = YES
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+TYPEDEF_HIDES_STRUCT   = YES
+
+# box() takes a function pointer and the cell_* callbacks are only reachable
+# through it, so the call graphs are the clearest picture of how the code fits
+# together.
+HAVE_DOT               = YES
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+DOT_IMAGE_FORMAT       = svg
+INTERACTIVE_SVG        = YES
+
+# Show the source, with cross-references. For a program this size the listing
+# is a legitimate part of the documentation.
+SOURCE_BROWSER         = YES
+INLINE_SOURCES         = YES
+REFERENCED_BY_RELATION = YES
+REFERENCES_RELATION    = YES
+VERBATIM_HEADERS       = YES
+
+# main() and friends live behind `#ifndef TESTS`; leaving TESTS undefined keeps
+# them in the reference.
+ENABLE_PREPROCESSING   = YES
+MACRO_EXPANSION        = YES
+
+# Non-standard tags used in the file header.
+ALIASES                = "license=@par License:^^" \
+                         "keywords=@par Keywords:^^"
+
+# Documentation rot fails the build: CI runs `make docs` and treats a missing
+# parameter or an undocumented member as an error.
+QUIET                  = YES
+WARNINGS               = YES
+WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_DOC_ERROR      = YES
+WARN_NO_PARAMDOC       = YES
+WARN_AS_ERROR          = FAIL_ON_WARNINGS

@@ -29,12 +29,19 @@
 # make sanitize
 # ```
 #
+# ### Document
+#
+# ```sh
+# make docs
+# ```
+#
 # ## Targets
 #
 # - `all` -- build the binary (default)
 # - `check` -- build, then run the suite
 # - `test` -- run the suite
 # - `sanitize` -- run the suite under ASan and UBSan
+# - `docs` -- build the doxygen reference
 # - `verify-runner` -- hold the submodule to RUNNER_VERSION
 # - `submodule` -- check out the test-runner submodule
 # - `run` -- play, honours LEVEL
@@ -62,7 +69,10 @@ LEVEL ?= classic
 
 SAN := -fsanitize=address,undefined -fno-omit-frame-pointer
 
-.PHONY: all check test sanitize verify-runner submodule run clean
+DOXYFILE := Doxyfile
+DOCSDIR  := build/doxygen
+
+.PHONY: all check test sanitize docs verify-runner submodule run clean
 
 all: $(BIN)
 
@@ -77,6 +87,17 @@ test: verify-runner
 
 sanitize: verify-runner
 	CFLAGS="$(CFLAGS) $(SAN)" sh $(RUNNER) $(SPECS)
+
+# Doxygen will not create a nested output directory itself. Warnings are errors
+# here, so an undocumented parameter fails the build like a failing test.
+docs:
+	@command -v doxygen >/dev/null 2>&1 || { \
+		echo "ERROR: doxygen is not installed."; \
+		exit 1; \
+	}
+	mkdir -p $(DOCSDIR)
+	doxygen $(DOXYFILE)
+	@echo "docs written to $(DOCSDIR)/html/index.html"
 
 verify-runner:
 	@test -f $(RUNNER_H) || { \
@@ -104,3 +125,4 @@ run: $(BIN)
 clean:
 	rm -f $(BIN)
 	rm -rf $(BIN).dSYM
+	rm -rf build
