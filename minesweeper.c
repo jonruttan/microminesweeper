@@ -89,7 +89,9 @@ int init(uint8 w, uint8 h, uint8 m)
 	mines = m;
 	score = 0;
 
-	for (i=255, j= 0, k=0; i;) {
+	stack_p = stack;
+
+	for (i=255, j= 0, k=0; ; i--) {
 		if (j-- && k <= height) {
 			n = 0;
 			score++;
@@ -97,13 +99,17 @@ int init(uint8 w, uint8 h, uint8 m)
 			n = INVALID;
 		}
 
-		board[255 - i--] = n;
-		
+		board[255 - i] = n;
+
 		if (j > width) {
 			j = width;
 			k++;
-		}	       
-	}	
+		}
+
+		if (!i) {
+			break;
+		}
+	}
 
 	while (m) {
 		i = rand() & 0xff;
