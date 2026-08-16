@@ -1,6 +1,48 @@
 #include "test-runner.h"
 #include "../minesweeper.c"
 
+/* Count the mines adjacent to (x, y) from first principles, without going
+ * through box(), so that box() is tested against something independent.
+ */
+static uint8 count_mines(uint8 x, uint8 y)
+{
+   int dx, dy, nx, ny;
+   uint8 n = 0;
+
+   for (dy = -1; dy <= 1; dy++) {
+      for (dx = -1; dx <= 1; dx++) {
+         nx = x + dx;
+         ny = y + dy;
+
+         if (nx < 0 || nx > MASK || ny < 0 || ny > MASK) {
+            continue;
+         }
+
+         if (board[xytoi(nx, ny)] == MINE) {
+            n++;
+         }
+      }
+   }
+
+   return n;
+}
+
+/* Returns int, not uint8: a full board is 256 cells, which a uint8 cannot
+ * hold and would silently report as zero.
+ */
+static int count_cells(uint8 value)
+{
+   int i, n = 0;
+
+   for (i = 0; i < 256; i++) {
+      if (board[i] == value) {
+         n++;
+      }
+   }
+
+   return n;
+}
+
 static char *test_cell_inc(void)
 {
    uint8 i = 0;
@@ -106,11 +148,113 @@ static char *test_box(void)
 
 static char *test_init(void)
 {
+   uint8 x, y;
+
+   init(10, 10, 10);
+
+   _it_should("seed the score with the safe cell count", 90 == score);
+   _it_should("record the mine count", 10 == mines);
+   _it_should("have placed exactly that many mines", 10 == count_cells(MINE));
+   _it_should("have reset the fill stack", stack == stack_p);
+
+   _it_should("mark the column past the width invalid", INVALID == board[xytoi(10, 0)]);
+   _it_should("mark the row past the height invalid", INVALID == board[xytoi(0, 10)]);
+   _it_should("mark the far corner invalid", INVALID == board[xytoi(MASK, MASK)]);
+   _it_should("leave the last playable cell playable", INVALID != board[xytoi(9, 9)]);
+
+   for (y = 0; y < 10; y++) {
+      for (x = 0; x < 10; x++) {
+         if (board[xytoi(x, y)] == MINE) {
+            continue;
+         }
+
+         _it_should("give every cell its true adjacent mine count",
+               count_mines(x, y) == board[xytoi(x, y)]);
+      }
+   }
+
+   /* A full 16x16 is 256 cells, but the score counts only the safe ones, so
+    * it stays inside a uint8.
+    */
+   init(16, 16, 40);
+   _it_should("not overflow the score on a full board", 216 == score);
+   _it_should("fill the whole address space", 0 == count_cells(INVALID));
+
+   init(16, 16, 40);
+   for (y = 0; y <= MASK; y++) {
+      for (x = 0; x <= MASK; x++) {
+         if (board[xytoi(x, y)] == MINE) {
+            continue;
+         }
+
+         _it_should("count neighbours correctly with no sentinel border",
+               count_mines(x, y) == board[xytoi(x, y)]);
+      }
+   }
+
+   /* Asking for more mines than there are cells would spin forever. */
+   init(9, 9, 200);
+   _it_should("clamp the mine count to the board", 81 == mines);
+   _it_should("have filled every cell with a mine", 81 == count_cells(MINE));
+
+   return NULL;
+}
+
+static char *test_no_edge_wrap(void)
+{
+   init(16, 16, 0);
+
+   _it_should("start from a clear board", 0 == count_cells(MINE));
+
+   board[xytoi(MASK, 5)] = MINE;
+   box(xytoi(MASK, 5), cell_inc);
+
+   _it_should("increment the cell above", 1 == board[xytoi(MASK - 1, 4)]);
+   _it_should("increment the cell left", 1 == board[xytoi(MASK - 1, 5)]);
+   _it_should("increment the cell below", 1 == board[xytoi(MASK - 1, 6)]);
+
+   /* These are the cells one past the right edge in memory. Reaching them
+    * would mean the fill had wrapped onto the following row.
+    */
+   _it_should("not touch the next row", 0 == board[xytoi(0, 6)]);
+   _it_should("not touch the row after", 0 == board[xytoi(0, 7)]);
+
+   board[xytoi(0, 10)] = MINE;
+   box(xytoi(0, 10), cell_inc);
+
+   _it_should("increment the cell right", 1 == board[xytoi(1, 10)]);
+   _it_should("not touch the previous row", 0 == board[xytoi(MASK, 9)]);
+   _it_should("not touch the row before", 0 == board[xytoi(MASK, 10)]);
+
    return NULL;
 }
 
 static char *test_probe(void)
 {
+   /* No mines, so probing anywhere floods the entire board. 16 wide keeps the
+    * column edges under test; 15 tall keeps a mine-free score representable.
+    */
+   init(16, 15, 0);
+
+   _it_should("survive the probe", 0 == probe(xytoi(8, 8)));
+   _it_should("have uncovered every cell", 240 == count_cells(VISIBLE));
+   _it_should("have run the score to zero", 0 == score);
+   _it_should("have drained the fill stack", stack == stack_p);
+
+   /* A cell walled off by numbers must not leak into the rest of the board. */
+   init(16, 15, 0);
+   board[xytoi(1, 0)] = MINE;
+   box(xytoi(1, 0), cell_inc);
+
+   _it_should("survive the probe", 0 == probe(xytoi(0, 0)));
+   _it_should("uncover the probed cell", VISIBLE + 1 == board[xytoi(0, 0)]);
+   _it_should("stop the fill at the number", 0 == board[xytoi(0, 2)]);
+
+   init(10, 10, 0);
+   board[xytoi(5, 5)] = MINE;
+
+   _it_should("report stepping on a mine", 1 == probe(xytoi(5, 5)));
+
    return NULL;
 }
 
@@ -167,6 +311,7 @@ static char *run_tests()
    _run_test(test_cell_reveal);
    _run_test(test_box);
    _run_test(test_init);
+   _run_test(test_no_edge_wrap);
    _run_test(test_probe);
    _run_test(test_mark);
    _run_test(test_xytoi);
