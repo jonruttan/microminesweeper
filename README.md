@@ -101,5 +101,5 @@ Score: 26, Move: 4
 Run the unit tests with:
 
 ```sh
-sh ./test-runner/test-runner.sh tests/minesweeper-test.c
+sh ./test-runner/test-runner.sh tests
 ```
