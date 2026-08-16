@@ -1,29 +1,66 @@
-/* Title:	Minimal C Minesweeper
+/* Title:		Minimal C Minesweeper
  * Description:	A version of the Minesweeper game for the terminal written in C.
  * Keywords:	[#c, #minesweeper]
- * Author:	"[Jon Ruttan](jonruttan@gmail.com)"
- * Date:	2025-06-07
- * Revision:	1 (2025-06-7)
+ * Author:		"[Jon Ruttan](jonruttan@gmail.com)"
+ * Date:		2025-06-07
+ * Revision:	1 (2025-06-07)
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
+/* Cell states. A cell's value is also its index into chars[], so drawing is a
+ * lookup with no branching and uncovering is an addition, not a state machine.
+ * The ordering earns its keep: every "already dealt with" state sorts above
+ * every "still hidden" one, so a single >= test makes a cell inert.
+ *
+ *   0-8    hidden, adjacent mine count    20-29  flagged
+ *   9      hidden mine                    31     off the active board
+ *   10-19  uncovered (19 is a hit mine)
+ */
 #define MINE	9
 #define VISIBLE	10
 #define MARKED	20
 #define INVALID	31
 
+/* The board is a fixed 16x16 address space, indexed i = (y << SHIFT) | x.
+ *
+ * The stride is a constant power of two, so an index is a shift and an or --
+ * never a multiply -- and a uint8 addresses all 256 cells exactly once.
+ *
+ * Cells outside the active width x height hold INVALID, which is >= MARKED and
+ * so is inert to every cell_* operation. That dead region doubles as the
+ * sentinel border -- except at the full 16 columns, where none is left over;
+ * see box_row().
+ */
+#define SHIFT	4
+#define STRIDE	16
+#define MASK	0x0f
+#define ROW	0xf0
+
 typedef unsigned char uint8;
 
+/* Indexed by cell value; see the state table above. Slot 30 (?) is spare. */
 char *chars = ".......... 12345678*XXXXXXXXXX?%";
 
 uint8 board[256];
+/* The flood fill's queue, so probe() need not recurse. */
 uint8 stack[256], *stack_p = stack;
 
-uint8 width, height, mines, score;
+uint8 width, height, mines;
 
+/* Safe cells left to uncover, not every unaccounted cell, so it tops out at
+ * 256 mines and stays inside a uint8 even on a full board.
+ */
+uint8 score;
+
+/* The three box() callbacks below each take a cell's index and value and
+ * return its new value; only cell_probe has any use for the index.
+ *
+ * cell_inc raises an adjacent count when seeding a mine. Other mines, and
+ * INVALID filler, are already at or above MINE and fall out untouched.
+ */
 uint8 cell_inc(uint8 i, uint8 c)
 {
 	if (c < MINE) {
@@ -33,6 +70,11 @@ uint8 cell_inc(uint8 i, uint8 c)
 	return c;
 }
 
+/* Uncover a cell, and queue it if it came up blank. Pushing exactly on the
+ * 0 -> VISIBLE transition is what lets the fill terminate without a visited
+ * set, since a cell can only make that transition once. A numbered cell is
+ * uncovered but not queued, which is what stops the fill at a number.
+ */
 uint8 cell_probe(uint8 i, uint8 c)
 {
 	if (c >= MINE) {
@@ -48,6 +90,9 @@ uint8 cell_probe(uint8 i, uint8 c)
 	return c;
 }
 
+/* Uncover for the end-of-game reveal. Display-only: unlike cell_probe it
+ * touches neither the score nor the stack, and display() discards the result.
+ */
 uint8 cell_reveal(uint8 i, uint8 c)
 {
 	if (c < VISIBLE) {
@@ -57,24 +102,39 @@ uint8 cell_reveal(uint8 i, uint8 c)
 	return c;
 }
 
+/* Apply fn to the three cells at j, j+1, j+2, skipping any that fell out of
+ * the row. j is a uint8, so it wraps inside the board rather than running off
+ * it -- and a cell that wrapped past a row edge lands in a different row,
+ * which is exactly what the high nibble catches. That one test is the whole
+ * 16-wide edge case; at any narrower width the INVALID border absorbs it.
+ */
+static void box_row(uint8 j, uint8 row, uint8 (*fn)(uint8, uint8))
+{
+	uint8 k;
+
+	for (k = 0; k < 3; k++, j++) {
+		if ((j & ROW) == row) {
+			board[j] = fn(j, board[j]);
+		}
+	}
+}
+
+/* Apply fn to the 3x3 neighbourhood around a cell, the centre included.
+ * Columns are clipped by the row mask above; rows need these guards instead,
+ * because a row that ran off the top or bottom is still a valid row.
+ */
 int box(uint8 i, uint8 (*fn)(uint8, uint8))
 {
-	uint8 j, k, *p;
+	uint8 y = i >> SHIFT;
 
-	if (i > width) {
-		for (j=i-width, p=board+j, k=3; k--; j--, p--) {
-			*p = fn(j, *p);
-		}
+	if (y) {
+		box_row(i - STRIDE - 1, (i - STRIDE) & ROW, fn);
 	}
 
-	for (j=i-1, p=board+j, k=3; k--; j++, p++) {
-		*p = fn(j, *p);
-	}
+	box_row(i - 1, i & ROW, fn);
 
-	if (255 - i > width) {
-		for (j=i+width, p=board+j, k=3; k--; j++, p++) {
-			*p = fn(j, *p);
-		}
+	if (y < MASK) {
+		box_row(i + STRIDE - 1, (i + STRIDE) & ROW, fn);
 	}
 
 	return 0;
@@ -82,28 +142,40 @@ int box(uint8 i, uint8 (*fn)(uint8, uint8))
 
 int init(uint8 w, uint8 h, uint8 m)
 {
-	uint8 i, j, k, n;
+	uint8 x, y, i;
 
 	width = w;
 	height = h;
-	mines = m;
 	score = 0;
+	stack_p = stack;
 
-	for (i=255, j= 0, k=0; i;) {
-		if (j-- && k <= height) {
-			n = 0;
-			score++;
-		} else {
-			n = INVALID;
+	for (y = 0, i = 0; y <= MASK; y++) {
+		for (x = 0; x <= MASK; x++, i++) {
+			if (x < width && y < height) {
+				board[i] = 0;
+				score++;
+			} else {
+				board[i] = INVALID;
+			}
 		}
+	}
 
-		board[255 - i--] = n;
-		
-		if (j > width) {
-			j = width;
-			k++;
-		}	       
-	}	
+	/* score now holds the playable count modulo 256, so a zero here means the
+	 * full 16x16 -- which a uint8 mine count cannot oversubscribe anyway. Every
+	 * smaller board counted exactly, so clamp against it; more mines than cells
+	 * would spin the placement loop forever.
+	 */
+	if (score && m > score) {
+		m = score;
+	}
+
+	mines = m;
+
+	/* Safe cells. Both terms are modulo 256, but their difference is not, so
+	 * this lands on the true count without ever widening. Needs one mine on a
+	 * full board, which every level places.
+	 */
+	score -= m;
 
 	while (m) {
 		i = rand() & 0xff;
@@ -118,7 +190,17 @@ int init(uint8 w, uint8 h, uint8 m)
 	return 0;
 }
 
-int probe(uint8 i)
+/* A shift and an or, never a multiply -- the whole reason the stride is 16. */
+uint8 xytoi(uint8 x, uint8 y)
+{
+	return (y << SHIFT) | x;
+}
+
+/* Uncover a cell, spreading while cells come up blank. Iterative: cell_probe
+ * pushes and this drains, so the fill's memory is the stack array rather than
+ * the call stack. Returns 1 if the cell was a mine.
+ */
+uint8 probe(uint8 i)
 {
 	*stack_p++ = i;
 
@@ -135,40 +217,42 @@ int probe(uint8 i)
 	return 0;
 }
 
+/* Flag a hidden cell. Anything at or above VISIBLE is already uncovered,
+ * already flagged, or INVALID filler, and is left alone -- so a repeat flag
+ * cannot double-count. The loop normalises any hidden value into the flagged
+ * range, which for a mine (9) takes two additions rather than one.
+ */
 int mark(uint8 i)
 {
+	if (board[i] >= VISIBLE) {
+		return 0;
+	}
+
 	while (board[i] < MARKED) {
 		board[i] += VISIBLE;
 	}
 
-	score--;
-
 	return 0;
 }
 
-uint8 xytoi(uint8 x, uint8 y)
-{
-	for (; y--; ) {
-		x += width + 1;
-	}
-
-	return ++x;
-}
-
+/* Draw the active board with hex labels. fn filters each cell on its way out
+ * without writing back, so passing cell_reveal exposes the mines on a loss
+ * while leaving the board itself alone.
+ */
 void display(uint8 (*fn)(uint8, uint8))
 {
-	uint8 x, y, i = 1, c;
+	uint8 x, y, i, c;
 
 	printf("  ");
 	for (x=0; x < width; x++) {
 		printf("%hhx ", x);
 	}
 
-
-	for (y=0; y < height; y++, i++) {
+	for (y=0; y < height; y++) {
 		printf("\n%hhx ", y);
 		for (x=0; x < width; x++) {
-			c = board[i++];
+			i = (y << SHIFT) | x;
+			c = board[i];
 			printf("%c ", chars[fn ? fn(i, c) : c]);
 		}
 	}
@@ -177,18 +261,83 @@ void display(uint8 (*fn)(uint8, uint8))
 }
 
 #ifndef TESTS
-int main(int argv, char *argc[], char *env[])
+#include <string.h>
+
+struct level {
+	char *name;
+	uint8 width, height, mines;
+};
+
+/* The classic expert board is 30x16, which needs more than the 16 columns a
+ * uint8 index affords, so expert is squared off at 16x16 with the same 99.
+ */
+static struct level levels[] = {
+	{ "classic",		10, 10, 10 },
+	{ "beginner",		 9,  9, 10 },
+	{ "intermediate",	16, 16, 40 },
+	{ "expert",			16, 16, 99 },
+	{ NULL,				 0,  0,  0 }
+};
+
+static struct level *find_level(char *name)
+{
+	struct level *l;
+
+	for (l = levels; l->name; l++) {
+		if (!strcmp(l->name, name)) {
+			return l;
+		}
+	}
+
+	return NULL;
+}
+
+static int usage(char *prog)
+{
+	struct level *l;
+
+	fprintf(stderr, "usage: %s [level]\n\nlevels:\n", prog);
+
+	for (l = levels; l->name; l++) {
+		fprintf(stderr, "  %-14s %hhux%hhu, %hhu mines%s\n",
+				l->name, l->width, l->height, l->mines,
+				l == levels ? " (default)" : "");
+	}
+
+	return 1;
+}
+
+int main(int argc, char *argv[])
 {
 	uint8 x, y, m, i;
 	int count, moves = 0;
+	struct level *l = levels;
+
+	if (argc > 1 && (l = find_level(argv[1])) == NULL) {
+		return usage(argv[0]);
+	}
 
 	srand(time(NULL));
-	init(10, 10, 10);
+	init(l->width, l->height, l->mines);
 
 	while (1) {
-		printf("Score: %i, Move: %i\n", score, moves);
+		printf("Score: %hhu, Mines: %hhu, Move: %i\n", score, mines, moves);
 		display(NULL);
 		count = scanf("%hhx %hhx %hhu", &x, &y, &m);
+
+		/* EOF, or input the format could not consume -- retrying would leave
+		 * the offending bytes in the buffer and spin.
+		 */
+		if (count != 3) {
+			printf("\n");
+			break;
+		}
+
+		if (x >= width || y >= height) {
+			printf("Off the board.\n");
+			continue;
+		}
+
 		i = xytoi(x, y);
 
 		if (m) {
@@ -212,4 +361,3 @@ int main(int argv, char *argc[], char *env[])
 	return 0;
 }
 #endif /* TESTS */
-
