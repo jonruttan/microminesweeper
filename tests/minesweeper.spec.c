@@ -93,6 +93,41 @@ static char *test_probe(void)
    return NULL;
 }
 
+static char *test_mark(void)
+{
+   score = 255;
+
+   board[0] = 0;
+
+   _it_should("return zero", 0 == mark(0));
+   _it_should("mark a hidden empty cell", MARKED == board[0]);
+   _it_should("have decremented the score", 254 == score);
+
+   _it_should("return zero", 0 == mark(0));
+   _it_should("not change an already marked cell", MARKED == board[0]);
+   _it_should("not have decremented the score again", 254 == score);
+
+   board[1] = MINE;
+
+   _it_should("return zero", 0 == mark(1));
+   _it_should("mark a hidden mine", MINE + MARKED == board[1]);
+   _it_should("have decremented the score", 253 == score);
+
+   board[2] = VISIBLE + 1;
+
+   _it_should("return zero", 0 == mark(2));
+   _it_should("not mark a revealed cell", VISIBLE + 1 == board[2]);
+   _it_should("not have decremented the score", 253 == score);
+
+   board[3] = INVALID;
+
+   _it_should("return zero", 0 == mark(3));
+   _it_should("not mark an invalid cell", INVALID == board[3]);
+   _it_should("not have decremented the score", 253 == score);
+
+   return NULL;
+}
+
 static char *test_xytoi(void)
 {
    width = 9;
@@ -111,6 +146,7 @@ static char *run_tests()
    _run_test(test_box);
    _run_test(test_init);
    _run_test(test_probe);
+   _run_test(test_mark);
    _run_test(test_xytoi);
 
    return NULL;

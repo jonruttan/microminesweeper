@@ -146,6 +146,10 @@ uint8 probe(uint8 i)
 
 int mark(uint8 i)
 {
+	if (board[i] >= VISIBLE) {
+		return 0;
+	}
+
 	while (board[i] < MARKED) {
 		board[i] += VISIBLE;
 	}
