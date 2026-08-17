@@ -226,8 +226,10 @@ int mark(uint8 i)
 {
 	if (board[i] < VISIBLE) {
 		board[i] += MARKED;
+		mines--;
 	} else if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
 		board[i] -= MARKED;
+		mines++;
 	}
 
 	return 0;
@@ -293,17 +295,23 @@ int main(int argc, char *argv[])
 	init(w, h, n);
 
 	while (1) {
-		printf("Score: %hhu, Mines: %hhu, Move: %i\n", score, mines, moves);
+		printf("Score: %hhu, Mines: %hhd, Move: %i\n", score, mines, moves);
 		display(NULL);
-		count = scanf("%hhx %hhx %hhu", &x, &y, &m);
+		/* One hex digit each, so 00 and 0 0 both read as (0, 0). */
+		count = scanf("%1hhx%1hhx%*[ \t]", &x, &y);
 
 		/* EOF, or input the format could not consume -- retrying would leave
 		 * the offending bytes in the buffer and spin.
 		 */
-		if (count != 3) {
+		if (count != 2) {
 			printf("\n");
 			break;
 		}
+
+		/* 0 or nothing probes, anything above marks -- newline and EOF sort
+		 * below '1', so an omitted action needs no test of its own.
+		 */
+		m = getchar() >= '1';
 
 		if (x >= width || y >= height) {
 			printf("Off the board.\n");
