@@ -263,24 +263,33 @@ void display(uint8 (*fn)(uint8, uint8))
 int main(int argc, char *argv[])
 {
 	uint8 x, y, m, i, w = 10, h = 10, n = 10;
+	unsigned seed = time(NULL);
 	int count, moves = 0;
 
-	if (argc == 4) {
+	if (argc >= 4) {
 		w = atoi(argv[1]);
 		h = atoi(argv[2]);
 		n = atoi(argv[3]);
 	}
 
+	if (argc == 5) {
+		seed = strtoul(argv[4], NULL, 0);
+	}
+
 	/* The board is a 16x16 address space, and a zero dimension leaves the
 	 * mine placement loop hunting for a cell that does not exist.
 	 */
-	if ((argc != 1 && argc != 4) || !w || w > STRIDE || !h || h > STRIDE) {
-		fprintf(stderr, "usage: %s [width height mines]\n", argv[0]);
+	if ((argc != 1 && argc != 4 && argc != 5) || !w || w > STRIDE || !h || h > STRIDE) {
+		fprintf(stderr, "usage: %s [width height mines [seed]]\n", argv[0]);
 
 		return 1;
 	}
 
-	srand(time(NULL));
+	/* Printed so a board can be played again: pass it back as the fourth
+	 * argument and the same mines land in the same places.
+	 */
+	srand(seed);
+	printf("Seed: %u\n", seed);
 	init(w, h, n);
 
 	while (1) {
