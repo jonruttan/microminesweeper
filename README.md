@@ -63,6 +63,8 @@ Score: 90, Mines: 10, Move: 0
 ```
 
 Enter the X and Y coordinates followed by an action, 0 for probe, 1 for flag.
+Flagging toggles, so the same command clears a flag you've changed your mind
+about.
 Coordinates are hexadecimal, matching the labels, so a 16x16 board runs to
 `f f`:
 
