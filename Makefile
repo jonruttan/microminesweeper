@@ -19,7 +19,7 @@
 # ### Play
 #
 # ```sh
-# make run LEVEL=intermediate
+# make run BOARD="16 16 40"
 # ```
 #
 # ### Test
@@ -37,7 +37,7 @@
 # - `sanitize` -- run the suite under ASan and UBSan
 # - `verify-runner` -- hold the submodule to RUNNER_VERSION
 # - `submodule` -- check out the test-runner submodule
-# - `run` -- play, honours LEVEL
+# - `run` -- play, honours BOARD
 # - `clean` -- remove build output
 # - `help` -- print the Usage and Targets sections above
 #
@@ -58,8 +58,8 @@ SPECS    := tests
 # unnoticed -- every `make test` checks it first.
 RUNNER_VERSION := 1.6.1
 
-# Level for `make run`, one of: classic beginner intermediate expert
-LEVEL ?= classic
+# Board for `make run`, as "width height mines". Empty plays the default.
+BOARD ?=
 
 SAN := -fsanitize=address,undefined -fno-omit-frame-pointer
 
@@ -100,7 +100,7 @@ submodule:
 	git submodule update --init --recursive
 
 run: $(BIN)
-	./$(BIN) $(LEVEL)
+	./$(BIN) $(BOARD)
 
 clean:
 	rm -f $(BIN)

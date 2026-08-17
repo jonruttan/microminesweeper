@@ -259,64 +259,29 @@ void display(uint8 (*fn)(uint8, uint8))
 }
 
 #ifndef TESTS
-#include <string.h>
-
-struct level {
-	char *name;
-	uint8 width, height, mines;
-};
-
-/* The classic expert board is 30x16, which needs more than the 16 columns a
- * uint8 index affords, so expert is squared off at 16x16 with the same 99.
- */
-static struct level levels[] = {
-	{ "classic",		10, 10, 10 },
-	{ "beginner",		 9,  9, 10 },
-	{ "intermediate",	16, 16, 40 },
-	{ "expert",			16, 16, 99 },
-	{ NULL,				 0,  0,  0 }
-};
-
-static struct level *find_level(char *name)
-{
-	struct level *l;
-
-	for (l = levels; l->name; l++) {
-		if (!strcmp(l->name, name)) {
-			return l;
-		}
-	}
-
-	return NULL;
-}
-
-static int usage(char *prog)
-{
-	struct level *l;
-
-	fprintf(stderr, "usage: %s [level]\n\nlevels:\n", prog);
-
-	for (l = levels; l->name; l++) {
-		fprintf(stderr, "  %-14s %hhux%hhu, %hhu mines%s\n",
-				l->name, l->width, l->height, l->mines,
-				l == levels ? " (default)" : "");
-	}
-
-	return 1;
-}
 
 int main(int argc, char *argv[])
 {
-	uint8 x, y, m, i;
+	uint8 x, y, m, i, w = 10, h = 10, n = 10;
 	int count, moves = 0;
-	struct level *l = levels;
 
-	if (argc > 1 && (l = find_level(argv[1])) == NULL) {
-		return usage(argv[0]);
+	if (argc == 4) {
+		w = atoi(argv[1]);
+		h = atoi(argv[2]);
+		n = atoi(argv[3]);
+	}
+
+	/* The board is a 16x16 address space, and a zero dimension leaves the
+	 * mine placement loop hunting for a cell that does not exist.
+	 */
+	if ((argc != 1 && argc != 4) || !w || w > STRIDE || !h || h > STRIDE) {
+		fprintf(stderr, "usage: %s [width height mines]\n", argv[0]);
+
+		return 1;
 	}
 
 	srand(time(NULL));
-	init(l->width, l->height, l->mines);
+	init(w, h, n);
 
 	while (1) {
 		printf("Score: %hhu, Mines: %hhu, Move: %i\n", score, mines, moves);

@@ -29,21 +29,14 @@ Run with:
 ./minesweeper
 ```
 
-Or pick a level:
-
-| Level | Board | Mines |
-| --- | --- | --- |
-| `classic` (default) | 10x10 | 10 |
-| `beginner` | 9x9 | 10 |
-| `intermediate` | 16x16 | 40 |
-| `expert` | 16x16 | 99 |
+Or give it a board, as width, height and mines:
 
 ```sh
-./minesweeper intermediate
+./minesweeper 16 16 40
 ```
 
-Traditional expert is 30x16, but thirty columns will not fit a `uint8` index,
-so it is squared off at 16x16 with the same 99 mines.
+Width and height go up to 16, which is as far as a `uint8` index reaches. The
+traditional 30x16 expert board will not fit.
 
 The game will draw the board, and wait for input:
 
