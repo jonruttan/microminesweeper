@@ -38,9 +38,17 @@ Or give it a board, as width, height and mines:
 Width and height go up to 16, which is as far as a `uint8` index reaches. The
 traditional 30x16 expert board will not fit.
 
+Every game prints the seed it was dealt. Pass it back as a fourth argument to
+play the same board again:
+
+```sh
+./minesweeper 10 10 10 31
+```
+
 The game will draw the board, and wait for input:
 
 ```
+Seed: 31
 Score: 90, Mines: 10, Move: 0
   0 1 2 3 4 5 6 7 8 9 
 0 . . . . . . . . . . 
@@ -73,7 +81,6 @@ Score: 16, Mines: 10, Move: 1
 7 1 1 1 . 3 2 1 1 1 1 
 8 . . . . . . . . . . 
 9 . . . . . . . . . . 
-9 3 1
 Score: 16, Mines: 10, Move: 2
   0 1 2 3 4 5 6 7 8 9 
 0                     
