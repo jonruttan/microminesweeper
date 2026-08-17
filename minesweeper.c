@@ -226,8 +226,10 @@ int mark(uint8 i)
 {
 	if (board[i] < VISIBLE) {
 		board[i] += MARKED;
+		mines--;
 	} else if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
 		board[i] -= MARKED;
+		mines++;
 	}
 
 	return 0;
@@ -293,7 +295,7 @@ int main(int argc, char *argv[])
 	init(w, h, n);
 
 	while (1) {
-		printf("Score: %hhu, Mines: %hhu, Move: %i\n", score, mines, moves);
+		printf("Score: %hhu, Mines: %hhd, Move: %i\n", score, mines, moves);
 		display(NULL);
 		/* One hex digit each, so 00 and 0 0 both read as (0, 0). */
 		count = scanf("%1hhx%1hhx%*[ \t]", &x, &y);
