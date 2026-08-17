@@ -217,13 +217,19 @@ uint8 probe(uint8 i)
 	return 0;
 }
 
-/* Flag a hidden cell. Anything at or above VISIBLE is already uncovered,
- * already flagged, or INVALID filler, and is left alone -- so a repeat flag
- * cannot double-count. The loop normalises any hidden value into the flagged
- * range, which for a mine (9) takes two additions rather than one.
+/* Toggle the flag on a cell. A flagged cell drops back to hidden; a hidden one
+ * is normalised up into the flagged range, which for a mine (9) takes two
+ * additions rather than one. Anything else -- already uncovered, or INVALID
+ * filler -- is left alone.
  */
 int mark(uint8 i)
 {
+	if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
+		board[i] -= MARKED;
+
+		return 0;
+	}
+
 	if (board[i] >= VISIBLE) {
 		return 0;
 	}

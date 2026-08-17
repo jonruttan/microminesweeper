@@ -262,32 +262,41 @@ static char *test_mark(void)
 {
    score = 255;
 
+   /* Marking toggles, and the cell's value survives the round trip. */
    board[0] = 0;
 
    _it_should("return zero", 0 == mark(0));
    _it_should("mark a hidden empty cell", MARKED == board[0]);
-   _it_should("not have touched the score", 255 == score);
-
    _it_should("return zero", 0 == mark(0));
-   _it_should("not change an already marked cell", MARKED == board[0]);
-   _it_should("still not have touched the score", 255 == score);
+   _it_should("unmark it again", 0 == board[0]);
 
-   board[1] = MINE;
+   board[1] = 3;
 
    _it_should("return zero", 0 == mark(1));
-   _it_should("mark a hidden mine", MINE + MARKED == board[1]);
-   _it_should("not have touched the score", 255 == score);
+   _it_should("mark a hidden numbered cell", MARKED + 3 == board[1]);
+   _it_should("return zero", 0 == mark(1));
+   _it_should("restore the count when unmarked", 3 == board[1]);
 
-   board[2] = VISIBLE + 1;
+   board[2] = MINE;
 
    _it_should("return zero", 0 == mark(2));
-   _it_should("not mark a revealed cell", VISIBLE + 1 == board[2]);
-   _it_should("not have touched the score", 255 == score);
+   _it_should("mark a hidden mine", MARKED + MINE == board[2]);
+   _it_should("return zero", 0 == mark(2));
+   _it_should("restore the mine when unmarked", MINE == board[2]);
 
-   board[3] = INVALID;
+   /* Uncovered and off-board cells are not flaggable either way. */
+   board[3] = VISIBLE + 1;
 
    _it_should("return zero", 0 == mark(3));
-   _it_should("not mark an invalid cell", INVALID == board[3]);
+   _it_should("not mark a revealed cell", VISIBLE + 1 == board[3]);
+
+   board[4] = INVALID;
+
+   _it_should("return zero", 0 == mark(4));
+   _it_should("not mark an invalid cell", INVALID == board[4]);
+   _it_should("return zero", 0 == mark(4));
+   _it_should("not unmark an invalid cell either", INVALID == board[4]);
+
    _it_should("not have touched the score", 255 == score);
 
    return NULL;
