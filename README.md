@@ -63,39 +63,41 @@ Score: 90, Mines: 10, Move: 0
 ```
 
 Enter the X and Y coordinates followed by an action, 0 for probe, 1 for flag.
-Flagging toggles, so the same command clears a flag you've changed your mind
-about.
 Coordinates are hexadecimal, matching the labels, so a 16x16 board runs to
-`f f`:
+`f f`. Probing an empty cell opens everything up to the surrounding numbers:
 
 ```
 0 0 0
-Score: 87, Mines: 10, Move: 1
+Score: 16, Mines: 10, Move: 1
   0 1 2 3 4 5 6 7 8 9 
-0 1 1 . . . . . . . . 
-1 1 . . . . . . . . . 
-2 . . . . . . . . . . 
-3 . . . . . . . . . . 
-4 . . . . . . . . . . 
-5 . . . . . . . . . . 
-6 . . . . . . . . . . 
-7 . . . . . . . . . . 
+0                     
+1       1 1 1     1 1 
+2   1 2 3 . 1     2 . 
+3   1 . . 2 1     2 . 
+4   1 2 2 1       1 1 
+5                     
+6     1 1 1           
+7 1 1 1 . 3 2 1 1 1 1 
 8 . . . . . . . . . . 
 9 . . . . . . . . . . 
-2 0 1
-Score: 87, Mines: 10, Move: 2
+9 3 1
+Score: 16, Mines: 10, Move: 2
   0 1 2 3 4 5 6 7 8 9 
-0 1 1 X . . . . . . . 
-1 1 . . . . . . . . . 
-2 . . . . . . . . . . 
-3 . . . . . . . . . . 
-4 . . . . . . . . . . 
-5 . . . . . . . . . . 
-6 . . . . . . . . . . 
-7 . . . . . . . . . . 
+0                     
+1       1 1 1     1 1 
+2   1 2 3 . 1     2 . 
+3   1 . . 2 1     2 X 
+4   1 2 2 1       1 1 
+5                     
+6     1 1 1           
+7 1 1 1 . 3 2 1 1 1 1 
 8 . . . . . . . . . . 
 9 . . . . . . . . . . 
 ```
+
+The `1` at `9 4` has one covered neighbour left, so `9 3` is a mine, and the
+second move flags it. Flagging toggles -- the same command clears a flag you
+have changed your mind about.
 
 `Score` counts the safe cells still covered, so it starts at cells minus mines
 and each one you uncover brings it down. Flagging does not move it -- reaching
