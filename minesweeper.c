@@ -217,25 +217,17 @@ uint8 probe(uint8 i)
 	return 0;
 }
 
-/* Toggle the flag on a cell. A flagged cell drops back to hidden; a hidden one
- * is normalised up into the flagged range, which for a mine (9) takes two
- * additions rather than one. Anything else -- already uncovered, or INVALID
- * filler -- is left alone.
+/* Toggle the flag on a cell. A hidden cell is 0-9, so adding MARKED lands it
+ * in the flagged band, and subtracting MARKED puts it back exactly as it was.
+ * Uncovered cells and INVALID filler match neither test and are left alone --
+ * INVALID being above the band is what keeps it out of the second one.
  */
 int mark(uint8 i)
 {
-	if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
+	if (board[i] < VISIBLE) {
+		board[i] += MARKED;
+	} else if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
 		board[i] -= MARKED;
-
-		return 0;
-	}
-
-	if (board[i] >= VISIBLE) {
-		return 0;
-	}
-
-	while (board[i] < MARKED) {
-		board[i] += VISIBLE;
 	}
 
 	return 0;
