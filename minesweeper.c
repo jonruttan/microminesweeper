@@ -224,10 +224,12 @@ uint8 probe(uint8 i)
  */
 int mark(uint8 i)
 {
-	if (board[i] < VISIBLE) {
+	if (board[i] < VISIBLE && mines) {
 		board[i] += MARKED;
+		mines--;
 	} else if (board[i] >= MARKED && board[i] <= MARKED + MINE) {
 		board[i] -= MARKED;
+		mines++;
 	}
 
 	return 0;

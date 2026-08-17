@@ -261,21 +261,28 @@ static char *test_probe(void)
 static char *test_mark(void)
 {
    score = 255;
+   mines = 10;
 
-   /* Marking toggles, and the cell's value survives the round trip. */
+   /* Marking toggles, and the cell's value survives the round trip. The mine
+    * count tracks the flags so the player can see how many are left.
+    */
    board[0] = 0;
 
    _it_should("return zero", 0 == mark(0));
    _it_should("mark a hidden empty cell", MARKED == board[0]);
+   _it_should("have counted the flag against the mines", 9 == mines);
    _it_should("return zero", 0 == mark(0));
    _it_should("unmark it again", 0 == board[0]);
+   _it_should("have given the mine back", 10 == mines);
 
    board[1] = 3;
 
    _it_should("return zero", 0 == mark(1));
    _it_should("mark a hidden numbered cell", MARKED + 3 == board[1]);
+   _it_should("have counted the flag against the mines", 9 == mines);
    _it_should("return zero", 0 == mark(1));
    _it_should("restore the count when unmarked", 3 == board[1]);
+   _it_should("have given the mine back", 10 == mines);
 
    board[2] = MINE;
 
@@ -283,6 +290,7 @@ static char *test_mark(void)
    _it_should("mark a hidden mine", MARKED + MINE == board[2]);
    _it_should("return zero", 0 == mark(2));
    _it_should("restore the mine when unmarked", MINE == board[2]);
+   _it_should("have given the mine back", 10 == mines);
 
    /* Uncovered and off-board cells are not flaggable either way. */
    board[3] = VISIBLE + 1;
@@ -296,6 +304,24 @@ static char *test_mark(void)
    _it_should("not mark an invalid cell", INVALID == board[4]);
    _it_should("return zero", 0 == mark(4));
    _it_should("not unmark an invalid cell either", INVALID == board[4]);
+   _it_should("not have counted unflaggable cells", 10 == mines);
+
+   /* With every mine accounted for there is nothing left to flag, which is
+    * also what keeps the count off the far side of zero.
+    */
+   mines = 0;
+   board[5] = 0;
+
+   _it_should("return zero", 0 == mark(5));
+   _it_should("refuse a flag with no mines left", 0 == board[5]);
+   _it_should("leave the count at zero", 0 == mines);
+
+   /* Unflagging still works at zero, and gives the mine back. */
+   board[6] = MARKED;
+
+   _it_should("return zero", 0 == mark(6));
+   _it_should("still unflag with the count at zero", 0 == board[6]);
+   _it_should("have given the mine back", 1 == mines);
 
    _it_should("not have touched the score", 255 == score);
 

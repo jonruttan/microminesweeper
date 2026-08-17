@@ -65,7 +65,13 @@ Score: 90, Mines: 10, Move: 0
 
 Enter the X and Y coordinates followed by an action, 0 for probe, 1 for flag.
 Coordinates are hexadecimal, matching the labels, so a 16x16 board runs to
-`f f`. Probing an empty cell opens everything up to the surrounding numbers:
+`f f`.
+
+Each is a single digit, so the spaces are optional and the action can be left
+off when probing -- `9 3 1`, `93 1` and `931` all flag the same square, and
+`0 0 0`, `0 0` and `00` all probe the corner.
+
+Probing an empty cell opens everything up to the surrounding numbers:
 
 ```
 0 0 0
@@ -101,7 +107,12 @@ have changed your mind about.
 
 `Score` counts the safe cells still covered, so it starts at cells minus mines
 and each one you uncover brings it down. Flagging does not move it -- reaching
-zero means every safe cell is uncovered, which wins.
+zero means every safe cell is uncovered, which wins. A single probe on an open
+board can take most of it at once.
+
+`Mines` counts down as you flag and back up as you unflag, so it shows how many
+are left to find. At zero there is nothing left to flag, so it never goes
+negative and no flag can be placed that the board cannot account for.
 
 ## Unit Tests
 
