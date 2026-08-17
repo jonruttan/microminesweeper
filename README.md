@@ -111,7 +111,8 @@ zero means every safe cell is uncovered, which wins. A single probe on an open
 board can take most of it at once.
 
 `Mines` counts down as you flag and back up as you unflag, so it shows how many
-are left to find. Flag more than there are and it goes negative.
+are left to find. At zero there is nothing left to flag, so it never goes
+negative and no flag can be placed that the board cannot account for.
 
 ## Unit Tests
 
